@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+    
+<head>
+    <meta charset="UTF-8">
+    <title>精致贪吃蛇小游戏</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+    background: linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%);
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+    margin: 0;
+    height: 0;
+}
+#gameArea {
+    width: 420px;
+    margin: 60px auto;
+    background: rgba(255,255,255,0.95);
+    border-radius: 18px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
+    padding: 30px 20px 20px 20px;
+    text-align: center;
+}
+#gameCanvas {
+    background: #f3f6fd;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(78,84,200,0.10);
+    display: block;
+    margin: 0 auto 20px auto;
+    border: 2px solid #4e54c8;
+}
+#scoreBoard h1 {
+    color: #4e54c8;
+    font-size: 1.5em;
+    margin: 0;
+    letter-spacing: 2px;
+}
+#score {
+    color: #e74c3c;
+}
+#gameOver {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255,255,255,0.98);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+    padding: 40px 30px;
+    text-align: center;
+    z-index: 10;
+    display: none;
+}
+#gameOver h2 {
+    color: #e74c3c;
+    margin-bottom: 20px;
+}
+#restartBtn {
+    background: linear-gradient(90deg, #4e54c8 0%, #8f94fb 100%);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: bold;
+    padding: 12px 30px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(78,84,200,0.15);
+    transition: background 0.2s;
+}
+#restartBtn:hover {
+    background: linear-gradient(90deg, #8f94fb 0%, #4e54c8 100%);
+}
+    </style>
+</head>
+<body>
+    <div id="gameArea">
+        <div id="scoreBoard">
+            <h1>贪吃蛇小游戏</h1>
+            <span>得分：<span id="score">0</span></span>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreSpan = document.getElementById('score');
+
+canvas.width = 400;
+canvas.height = 400;
+
+const box = 20; // 每个格子的大小
+let snake = [{ x: 9 * box, y: 10 * box }];
+let direction = 'RIGHT';
+let food = {};
+let score = 0;
+let gameInterval;
+let isGameOver = false;
+let speed = 180; // 默认慢速
+
+// 生成食物
+function spawnFood() {
+    food = {
+        x: Math.floor(Math.random() * (canvas.width / box)) * box,
+        y: Math.floor(Math.random() * (canvas.height / box)) * box
+    };
+    // 避免食物生成在蛇身上
+    if (snake.some(segment => segment.x === food.x && segment.y === food.y)) {
+        spawnFood();
+    }
+}
+
+// 绘制游戏
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 绘制蛇
+    for (let i = 0; i < snake.length; i++) {
+        ctx.fillStyle = i === 0 ? '#4e54c8' : '#8f94fb';
+        ctx.fillRect(snake[i].x, snake[i].y, box, box);
+        ctx.strokeStyle = '#fff';
+        ctx.strokeRect(snake[i].x, snake[i].y, box, box);
+    }
+
+    // 绘制食物
+    ctx.fillStyle = '#e74c3c';
+    ctx.beginPath();
+    ctx.arc(food.x + box / 2, food.y + box / 2, box / 2 - 2, 0, 2 * Math.PI);
+    ctx.fill();
+
+    // 绘制分数
+    scoreSpan.textContent = score;
+}
+
+// 移动蛇
+function moveSnake() {
+    let head = { x: snake[0].x, y: snake[0].y };
+
+    if (direction === 'LEFT') head.x -= box;
+    if (direction === 'UP') head.y -= box;
+    if (direction === 'RIGHT') head.x += box;
+    if (direction === 'DOWN') head.y += box;
+
+    // 穿墙处理
+    if (head.x < 0) head.x = canvas.width - box;
+    if (head.x >= canvas.width) head.x = 0;
+    if (head.y < 0) head.y = canvas.height - box;
+    if (head.y >= canvas.height) head.y = 0;
+
+    // 撞自己检测
+    if (snake.some(segment => segment.x === head.x && segment.y === head.y)) {
+        endGame();
+        return;
+    }
+
+    snake.unshift(head);
+
+    // 吃到食物
+    if (head.x === food.x && head.y === food.y) {
+        score += 1;
+        spawnFood();
+    } else {
+        snake.pop();
+    }
+}
+
+// 游戏主循环
+function gameLoop() {
+    moveSnake();
+    draw();
+}
+
+// 键盘控制
+document.addEventListener('keydown', e => {
+    if (isGameOver) return;
+    if (e.key === 'ArrowLeft' && direction !== 'RIGHT') direction = 'LEFT';
+    if (e.key === 'ArrowUp' && direction !== 'DOWN') direction = 'UP';
+    if (e.key === 'ArrowRight' && direction !== 'LEFT') direction = 'RIGHT';
+    if (e.key === 'ArrowDown' && direction !== 'UP') direction = 'DOWN';
+});
+
+// 结束游戏
+function endGame() {
+    clearInterval(gameInterval);
+    isGameOver = true;
+    showGameOver();
+}
+
+// 显示游戏结束界面
+function showGameOver() {
+    let gameOverDiv = document.getElementById('gameOver');
+    if (!gameOverDiv) {
+        gameOverDiv = document.createElement('div');
+        gameOverDiv.id = 'gameOver';
+        document.body.appendChild(gameOverDiv);
+        }
+    // 每次结束更新内容
+    gameOverDiv.innerHTML = `
+        <h2>游戏结束！</h2>
+        <p>得分：${score}</p>
+        <button id="restartBtn">重新开始</button>
+    `;
+    document.getElementById('restartBtn').onclick = restartGame;
+    gameOverDiv.style.display = 'block';
+}
+
+// 重启游戏
+function restartGame() {
+    snake = [{ x: 9 * box, y: 10 * box }];
+    direction = 'RIGHT';
+    score = 0;
+    isGameOver = false;
+    spawnFood();
+    draw();
+    document.getElementById('gameOver').style.display = 'none';
+    clearInterval(gameInterval);
+    gameInterval = setInterval(gameLoop, speed);
+}
+
+// 速度选择（手动切换按钮，美观样式，明显速度变化）
+function createSpeedSelector() {
+    const speedDiv = document.createElement('div');
+    speedDiv.style.textAlign = 'center';
+    speedDiv.style.marginBottom = '15px';
+    speedDiv.innerHTML = `
+        <span style="font-weight:500;color:#4e54c8;margin-right:10px;">选择速度：</span>
+        <button class="speed-btn active" data-speed="180">慢速</button>
+        <button class="speed-btn" data-speed="90">中速</button>
+        <button class="speed-btn" data-speed="40">快速</button>
+        <div id="speed-tip" style="margin-left:15px;color:#e74c3c;font-weight:bold;">当前：慢速</div>
+    `;
+    document.getElementById('gameArea').insertBefore(speedDiv, document.getElementById('scoreBoard'));
+
+    // 按钮样式
+    const style = document.createElement('style');
+    style.innerHTML = `
+        .speed-btn {
+            background: linear-gradient(90deg, #8f94fb 0%, #4e54c8 100%);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 8px 22px;
+            margin: 0 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(78,84,200,0.10);
+            transition: background 0.2s, transform 0.2s;
+        }
+        .speed-btn.active {
+            background: linear-gradient(90deg, #e74c3c 0%, #f9d423 100%);
+            color: #fff;
+            transform: scale(1.08);
+        }
+        .speed-btn:active {
+            opacity: 0.85;
+        }
+    `;
+    document.head.appendChild(style);
+
+    // 按钮事件
+    document.querySelectorAll('.speed-btn').forEach(btn => {
+        btn.onclick = function() {
+            document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            speed = Number(this.dataset.speed);
+            // 显示当前速度
+            let tip = document.getElementById('speed-tip');
+            if (speed === 180) tip.textContent = '当前：慢速';
+            else if (speed === 90) tip.textContent = '当前：中速';
+            else tip.textContent = '当前：快速';
+            // 立即重启定时器，速度变化明显
+            if (!isGameOver) {
+                clearInterval(gameInterval);
+                gameInterval = setInterval(gameLoop, speed);
+            }
+        };
+    });
+}
+
+// 初始化
+createSpeedSelector();
+spawnFood();
+draw();
+gameInterval = setInterval(gameLoop, speed);
+    </script>
+</body>
+</html>
